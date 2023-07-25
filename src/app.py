@@ -22,10 +22,8 @@ vectorstore_path = '../faiss_product/'
 app = FastAPI()
 
 
-# os.environ["HUGGINGFACEHUB_API_TOKEN"] = "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"
 # embeddings = HuggingFaceEmbeddings()
-# llm=HuggingFaceHub(repo_id="google/flan-t5-xl", model_kwargs={"temperature":0, "max_length":512})
-# chain = load_qa_chain(llm, chain_type="stuff")
+# llm = HuggingFaceHub(repo_id="google/flan-t5-xl", model_kwargs={"temperature":0, "max_length":512})
 
 embeddings = OpenAIEmbeddings()
 
