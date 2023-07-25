@@ -1,3 +1,4 @@
 .python-version
 faiss_product/index.faiss
 faiss_product/index.pkl
+.env
