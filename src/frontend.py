@@ -5,10 +5,10 @@ import requests
 url = "http://localhost:8000/conversation"
 
 def conversational_chat(query):
-    request_json = {"question": query, "chat_history": st.session_state['history']}
+    chat_history = st.session_state['history']
+    request_json = {"question": query, "chat_history": chat_history}
     response = requests.post(url, json=request_json)
     response = response.json()
-    
     st.session_state['history'].append((query, response["answer"]))
     
     return response["answer"]

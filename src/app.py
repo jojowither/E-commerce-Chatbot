@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv, dotenv_values 
-from typing import List
+from typing import List, Union, Tuple
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
@@ -46,7 +46,7 @@ chain = ConversationalRetrievalChain.from_llm(llm=llm,
 
 class ChatModel(BaseModel):
     question: str
-    chat_history: List
+    chat_history: Union[List[str], List[Tuple[str, str]]] = []
 
 
 @app.post("/conversation")
