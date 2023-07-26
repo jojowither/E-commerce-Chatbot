@@ -23,7 +23,10 @@ The `.env` should be like
 ```bash
 OPENAI_API_KEY = <your token>
 HUGGINGFACEHUB_API_TOKEN = <your token>
+USE_OPENAI_LLM = True
 ```
+
+Must set the `USE_OPENAI_LLM` to True or False. If you want to use huggingface embedding, recommend to use GPU.
 
 ## Start up
 

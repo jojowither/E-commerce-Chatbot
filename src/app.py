@@ -1,4 +1,5 @@
 import os
+import yaml
 from dotenv import load_dotenv, dotenv_values 
 from typing import List, Union, Tuple
 from fastapi import FastAPI
@@ -15,29 +16,41 @@ from langchain import HuggingFaceHub
 
 
 config = dotenv_values("../.env") 
-os.environ['OPENAI_API_KEY'] = config['OPENAI_API_KEY'] 
-os.environ['HUGGINGFACEHUB_API_TOKEN'] = config['HUGGINGFACEHUB_API_TOKEN']
+USE_OPENAI_LLM = yaml.safe_load(config['USE_OPENAI_LLM'])
 file_path = '../data/se_product.csv'
-vectorstore_path = '../faiss_product/'
+vectorstore_name = 'faiss_product'
 app = FastAPI()
 
+def get_vectorstore_path(vectorstore_path, file_path, embeddings):
+    if not os.path.exists(vectorstore_path):
+        loader = CSVLoader(file_path=file_path, encoding="utf-8", csv_args={'delimiter': ','})
+        data = loader.load()
+        vectorstore = FAISS.from_documents(data, embeddings)
+        vectorstore.save_local(vectorstore_path)
+        print('Finsih save vectorstore')
+    else:
+        vectorstore = FAISS.load_local(vectorstore_path, embeddings)
 
-# embeddings = HuggingFaceEmbeddings()
-# llm = HuggingFaceHub(repo_id="google/flan-t5-xl", model_kwargs={"temperature":0, "max_length":512})
+    return vectorstore
 
-embeddings = OpenAIEmbeddings()
 
-if not os.path.exists(vectorstore_path):
-    loader = CSVLoader(file_path=file_path, encoding="utf-8", csv_args={'delimiter': ','})
-    data = loader.load()
-    vectorstore = FAISS.from_documents(data, embeddings)
-    vectorstore.save_local(vectorstore_path)
-    print('Finsih save vectorstore')
+if USE_OPENAI_LLM:
+    os.environ['OPENAI_API_KEY'] = config['OPENAI_API_KEY'] 
+    embeddings = OpenAIEmbeddings()
+    llm = ChatOpenAI(temperature=0.0, model_name='gpt-3.5-turbo')
 
+    vectorstore_path = f'../{vectorstore_name}_openai/'
+    vectorstore = get_vectorstore_path(vectorstore_path, file_path, embeddings)
 else:
-    vectorstore = FAISS.load_local(vectorstore_path, embeddings)
+    # recommend to use GPU
+    os.environ['HUGGINGFACEHUB_API_TOKEN'] = config['HUGGINGFACEHUB_API_TOKEN']
+    embeddings = HuggingFaceEmbeddings()
+    llm = HuggingFaceHub(repo_id="google/flan-t5-xl", model_kwargs={"temperature":0, "max_length":512})
 
-llm = ChatOpenAI(temperature=0.0, model_name='gpt-3.5-turbo')
+    vectorstore_path = f'../{vectorstore_name}_hf/'
+    vectorstore = get_vectorstore_path(vectorstore_path, file_path, embeddings)
+
+
 chain = ConversationalRetrievalChain.from_llm(llm=llm, 
                                               retriever=vectorstore.as_retriever())   
 
