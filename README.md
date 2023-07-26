@@ -8,6 +8,14 @@ The data comes from a small part of pxmart 隔日達 https://pxbox.es.pxmart.com
 
 ## Setup
 
+Python version 3.9.13
+
+Install the package 
+
+```bash
+pip install -r requirements.txt
+```
+
 You need to create `.env` in the root.
 
 The `.env` should be like
