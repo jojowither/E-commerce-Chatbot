@@ -1,8 +1,10 @@
 import streamlit as st
 from streamlit_chat import message
 import requests
+import yaml
 
-url = "http://localhost:8000/conversation"
+config = yaml.safe_load(open("config.yaml"))
+url = f"http://localhost:{config['API_PORT']}/conversation"
 
 def conversational_chat(query):
     chat_history = st.session_state['history']
