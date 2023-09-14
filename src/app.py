@@ -9,33 +9,34 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationalRetrievalChain
-from langchain.chains.question_answering import load_qa_chain
 from langchain.document_loaders.csv_loader import CSVLoader
-from langchain.vectorstores import FAISS
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import Chroma
 from langchain import HuggingFaceHub
 
 
-config = dotenv_values("../.env") 
-USE_OPENAI_LLM = yaml.safe_load(config['USE_OPENAI_LLM'])
-file_path = '../data/se_product.csv'
-vectorstore_name = 'faiss_product'
+env_config = dotenv_values("../.env") 
+USE_OPENAI_LLM = yaml.safe_load(env_config['USE_OPENAI_LLM'])
+config = yaml.safe_load(open("config.yaml"))
+file_path = config['file_path']
+vectorstore_name = config['vectorstore_name']
 app = FastAPI()
 
 def get_vectorstore_path(vectorstore_path, file_path, embeddings):
     if not os.path.exists(vectorstore_path):
         loader = CSVLoader(file_path=file_path, encoding="utf-8", csv_args={'delimiter': ','})
-        data = loader.load()
-        vectorstore = FAISS.from_documents(data, embeddings)
-        vectorstore.save_local(vectorstore_path)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=30)
+        documents = text_splitter.split_documents(loader.load())
+        vectorstore = Chroma.from_documents(documents, embeddings, persist_directory=vectorstore_path)
         print('Finsih save vectorstore')
     else:
-        vectorstore = FAISS.load_local(vectorstore_path, embeddings)
+        vectorstore = Chroma(persist_directory=vectorstore_path, embedding_function=embeddings)
 
     return vectorstore
 
 
 if USE_OPENAI_LLM:
-    os.environ['OPENAI_API_KEY'] = config['OPENAI_API_KEY'] 
+    os.environ['OPENAI_API_KEY'] = env_config['OPENAI_API_KEY'] 
     embeddings = OpenAIEmbeddings()
     llm = ChatOpenAI(temperature=0.0, model_name='gpt-3.5-turbo')
 
@@ -43,7 +44,7 @@ if USE_OPENAI_LLM:
     vectorstore = get_vectorstore_path(vectorstore_path, file_path, embeddings)
 else:
     # recommend to use GPU
-    os.environ['HUGGINGFACEHUB_API_TOKEN'] = config['HUGGINGFACEHUB_API_TOKEN']
+    os.environ['HUGGINGFACEHUB_API_TOKEN'] = env_config['HUGGINGFACEHUB_API_TOKEN']
     embeddings = HuggingFaceEmbeddings()
     llm = HuggingFaceHub(repo_id="google/flan-t5-xl", model_kwargs={"temperature":0, "max_length":512})
 
@@ -67,4 +68,4 @@ async def conversation(data: ChatModel):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=config['API_PORT'])
