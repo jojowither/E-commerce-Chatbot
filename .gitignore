@@ -1,3 +1,4 @@
 .python-version
 faiss_*/
 .env
+chroma_product_openai/
