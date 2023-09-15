@@ -1,5 +1,6 @@
 import os
 import yaml
+import re
 from dotenv import load_dotenv, dotenv_values 
 from typing import List, Union, Tuple
 from fastapi import FastAPI
@@ -27,6 +28,18 @@ def get_vectorstore_path(vectorstore_path, file_path, embeddings):
         loader = CSVLoader(file_path=file_path, encoding="utf-8", csv_args={'delimiter': ','})
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=30)
         documents = text_splitter.split_documents(loader.load())
+        
+        for idx, document in enumerate(documents):
+            try:
+                sale_num_content = document.page_content.split('\n')[1]
+            except IndexError:
+                sale_num_content = documents[idx-1].metadata['sale_no']
+
+            match = re.search(r'\d+', sale_num_content)
+            if match:
+                documents[idx].metadata['sale_no'] = match.group()
+            else:
+                documents[idx].metadata['sale_no'] = '0000'
         vectorstore = Chroma.from_documents(documents, embeddings, persist_directory=vectorstore_path)
         print('Finsih save vectorstore')
     else:
@@ -53,7 +66,8 @@ else:
 
 
 chain = ConversationalRetrievalChain.from_llm(llm=llm, 
-                                              retriever=vectorstore.as_retriever())   
+                                              retriever=vectorstore.as_retriever(),
+                                              return_source_documents=True)   
 
 
 class ChatModel(BaseModel):
