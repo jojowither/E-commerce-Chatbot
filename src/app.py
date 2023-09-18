@@ -6,6 +6,7 @@ from typing import List, Union, Tuple
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
+import pandas as pd
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.chat_models import ChatOpenAI
@@ -21,6 +22,7 @@ USE_OPENAI_LLM = yaml.safe_load(env_config['USE_OPENAI_LLM'])
 config = yaml.safe_load(open("config.yaml"))
 file_path = config['file_path']
 vectorstore_name = config['vectorstore_name']
+product_df = pd.read_csv(file_path)
 app = FastAPI()
 
 def get_vectorstore_path(vectorstore_path, file_path, embeddings):
@@ -70,6 +72,14 @@ chain = ConversationalRetrievalChain.from_llm(llm=llm,
                                               return_source_documents=True)   
 
 
+def get_metadata(documents):
+    sale_no_list = []
+    for document in documents:
+        sale_no_list.append(int(document.metadata['sale_no']))
+    # product_df[product_df["銷售編號"].isin(sale_no_list)]
+    return sale_no_list
+
+
 class ChatModel(BaseModel):
     question: str
     chat_history: Union[List[str], List[Tuple[str, str]]] = []
@@ -78,6 +88,8 @@ class ChatModel(BaseModel):
 @app.post("/conversation")
 async def conversation(data: ChatModel):
     response = chain({"question": data.question, "chat_history": data.chat_history})
+    # can use this metadata to get the product from db
+    sale_no_list = get_metadata(response["source_documents"])
     return response
 
 
